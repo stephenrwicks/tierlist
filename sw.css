@@ -1,0 +1,148 @@
+:where(.sw-theme) {
+    /* sw-theme v0.1 */
+
+
+    /* Color should be the only thing modified externally */
+    /* May add accent color (color2) eventually */
+    --color: rgba(50, 50, 50, 1);
+
+    /* Need to decide which tokens are meant to be used externally. Maybe I don't create any tokens at all if they are not meant to be used */
+
+    --white: color-mix(in oklch, white 97%, var(--color) 3%);
+    --color100: color-mix(in oklch, white 90%, var(--color) 10%);
+    --color300: color-mix(in oklch, white 60%, var(--color) 40%);
+    --color500: var(--color);
+    --color700: color-mix(in oklch, black 25%, var(--color) 75%);
+    --color800: color-mix(in oklch, black 50%, var(--color) 50%);
+    --black: color-mix(in oklch, black 75%, var(--color) 25%);
+
+    --border: 1px solid var(--color500);
+    --boxShadow: 0px 0px 8px var(--color300);
+    --boxShadowDark: 0px 0px .15em var(--color700);
+    --boxShadowInset: 0px 0px 0px .03em var(--color500) inset;
+
+    font: normal 16px Segoe UI,
+        Roboto,
+        Helvetica Neue,
+        Arial,
+        sans-serif;
+    color: var(--black);
+    accent-color: var(--color300);
+    box-sizing: border-box;
+
+
+    * {
+        font: inherit;
+        margin: 0px;
+        padding: 0px;
+        box-sizing: border-box;
+    }
+
+    label {
+        display: block;
+        width: fit-content;
+    }
+
+    label:has(input[type="checkbox"]),
+    label:has(input[type="radio"]) {
+        display: flex;
+        flex-flow: row nowrap;
+        gap: .5rem;
+        /* which easing to use? ease-out is snappier */
+        transition: background-color .2s ease-out;
+
+        &:hover {
+            background-color: var(--color300);
+        }
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        all: initial;
+    }
+
+    button,
+    select,
+    input {
+        --height: 2.5rem;
+
+        height: var(--height);
+        display: block;
+
+        padding: .4rem;
+        outline: 0px;
+        border: var(--border);
+        border-radius: 1px;
+
+        &:disabled {
+            cursor: initial;
+            opacity: .7;
+        }
+
+        &:hover:not(:disabled)  {
+            box-shadow: var(--boxShadow);
+        }
+
+        &:focus,
+        &:focus-visible {
+            box-shadow: var(--boxShadow), var(--boxShadowInset);
+        }
+
+        &:is(button) {
+            display: grid;
+            place-items: center;
+            min-width: 4em;
+            /* todo Text will wrap, needs line stuff to keep it on 1 line */
+            text-wrap: balance;
+            user-select: none;
+            cursor: pointer;
+            background-color: var(--color100);
+
+            &:active:not(:disabled) {
+                /* kind of want drop shadow */
+                box-shadow: var(--boxShadow), var(--boxShadowInset), var(--boxShadowDark);
+            }
+
+            &[type="submit"],
+            &.solid {
+                color: var(--white);
+                background-color: var(--color500);
+            }
+        }
+
+        &:is(input) {
+            background-color: var(--white);
+
+            &:focus,
+            &:focus-visible {
+                background-color: var(--color100);
+            }
+
+
+            &[type="color"] {
+                width: var(--height);
+                cursor: pointer;
+            }
+        }
+
+    }
+
+    dialog {
+        margin: auto;
+        border: 0px;
+        background-color: var(--white);
+        box-shadow: var(--boxShadow);
+        filter: drop-shadow(0px 0px 1em var(--black));
+
+        &::backdrop {
+            background-color: var(--color800);
+            opacity: .6;
+        }
+    }
+
+    ::selection {
+        background-color: var(--color500);
+        color: var(--white);
+    }
+
+}

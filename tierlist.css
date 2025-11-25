@@ -1,0 +1,155 @@
+body {
+    height: 100vh;
+    display: grid;
+    place-items: center;
+    margin: 0px;
+    padding: 0px;
+}
+
+.sw-tier-list {
+
+    /* Set base color externally to update theme */
+    --color: rebeccapurple;
+    --gap: .2em;
+    --squareSize: 5em;
+
+    width: min(750px, 100vw);
+    display: grid;
+    gap: 1em;
+    padding: 3em;
+    background-color: var(--white);
+    box-shadow: var(--boxShadow);
+
+    main {
+        display: grid;
+        gap: 1em;
+
+        >div {
+            /* Tier row */
+            display: flex;
+            flex-flow: row nowrap;
+            gap: var(--gap);
+            height: var(--squareSize);
+
+            >.drop {
+                /* Drop container */
+                flex-grow: 1;
+                display: flex;
+                flex-flow: row nowrap;
+                padding: 0px var(--gap);
+                gap: var(--gap);
+                box-shadow: var(--boxShadowInset);
+            }
+
+            >button {
+                height: var(--squareSize);
+                width: var(--squareSize);
+            }
+        }
+    }
+
+    header {
+        min-height: calc(var(--squareSize) / 2);
+        display: flex;
+        flex-flow: row nowrap;
+        justify-content: end;
+    }
+
+    footer {
+        display: grid;
+        gap: 1em;
+        min-height: var(--squareSize);
+
+        >.drop {
+            /* Unused row */
+            display: flex;
+            flex-flow: row wrap;
+            gap: var(--gap);
+            min-height: var(--squareSize);
+        }
+
+        button {
+            justify-self: end;
+        }
+
+    }
+
+    .item {
+        height: var(--squareSize);
+        width: var(--squareSize);
+        cursor: pointer;
+        display: grid;
+        position: relative;
+        overflow: hidden;
+
+        &.drag {
+            filter: drop-shadow(0px 0px .5rem var(--black));
+            z-index: 1;
+        }
+
+        >img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: auto;
+            object-fit: cover;
+            user-select: none;
+        }
+
+        &.preview {
+            --squareSize: 10em;
+        }
+    }
+
+    dialog {
+        padding: 2em;
+        width: 25em;
+        height: 35em;
+
+        form {
+            height: 100%;
+            display: flex;
+            flex-flow: column nowrap;
+        }
+
+        .form-content {
+            flex: 1;
+            display: grid;
+            place-items: center;
+
+            .input-wrapper, .clear-image-button {
+                display: none;
+            }
+
+            &:has(img) {
+                .input-wrapper, .clear-image-button {
+                    display: block;
+                }
+
+                .add-image-button {
+                    display: none;
+                }
+
+                img {
+                    height: 12em;
+                    width: auto;
+                    box-shadow: var(--boxShadow);
+                }
+            }
+        }
+
+        .button-row {
+            display: flex;
+            flex-flow: row nowrap;
+            gap: .5em;
+            justify-content: end;
+        }
+
+
+    }
+
+
+
+}
