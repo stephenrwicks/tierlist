@@ -1,7 +1,6 @@
 :where(.sw-theme) {
     /* sw-theme v0.1 */
 
-
     /* Color should be the only thing modified externally */
     /* May add accent color (color2) eventually */
     --color: rgba(50, 50, 50, 1);
@@ -65,7 +64,6 @@
     select,
     input {
         --height: 2.5rem;
-
         height: var(--height);
         display: block;
 
@@ -105,6 +103,7 @@
 
             &[type="submit"],
             &.solid {
+                /* Needs better focus state */
                 color: var(--white);
                 background-color: var(--color500);
             }

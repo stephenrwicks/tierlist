@@ -26,10 +26,12 @@ body {
 
         >div {
             /* Tier row */
+            --color: green;
             display: flex;
             flex-flow: row nowrap;
             gap: var(--gap);
             height: var(--squareSize);
+            background-color: var(--white);
 
             >.drop {
                 /* Drop container */
@@ -38,7 +40,11 @@ body {
                 flex-flow: row nowrap;
                 padding: 0px var(--gap);
                 gap: var(--gap);
-                box-shadow: var(--boxShadowInset);
+                border: var(--border);
+
+                &.active {
+                    box-shadow: var(--boxShadow);
+                }
             }
 
             >button {
@@ -53,11 +59,17 @@ body {
         display: flex;
         flex-flow: row nowrap;
         justify-content: end;
+        gap: .7em;
+        
+        button {
+            min-width: 2.5em;
+        }
+
     }
 
     footer {
         display: grid;
-        gap: 1em;
+        gap: .7em;
         min-height: var(--squareSize);
 
         >.drop {
@@ -96,6 +108,17 @@ body {
             height: auto;
             object-fit: cover;
             user-select: none;
+        }
+
+        >div {
+            background-color: var(--white);
+            opacity: .7;
+            place-self: center;
+            word-break: break-word;
+            overflow: hidden;
+            max-height: 100%;
+            font-size: .8em;
+            padding: .2em
         }
 
         &.preview {
