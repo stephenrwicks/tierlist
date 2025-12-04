@@ -1,37 +1,10 @@
-const buildTier = (value: string) => {
-    const container = document.createElement('div');
-    const valueBox = document.createElement('button');
-    valueBox.type = 'button';
-    valueBox.textContent = value;
-
-    const dropDiv = document.createElement('div');
-    dropDiv.className = 'drop';
-
-    container.append(valueBox, dropDiv)
-    // div.className = 'sw-theme';
-
-    const x: TTier = {
-        container,
-        dropDiv,
-        valueBox,
-        items: [],
-        sortOrder: 0
-    }
-
-    return container;
-};
-
-
-
 type TTier = {
-    container: HTMLDivElement;
+    containerDiv: HTMLDivElement;
     dropDiv: HTMLDivElement;
     valueBox: HTMLButtonElement;
     items: TItem[];
     sortOrder: number;
 }
-
-const ITEMSET: Set<TItem> = new Set();
 
 type TItem = {
     containerButton: HTMLButtonElement;
@@ -42,6 +15,51 @@ type TItem = {
     edit(): Promise<TItem | null>;
     delete(): void;
 }
+
+const ITEMSET: Set<TItem> = new Set();
+
+
+const Tier = (value: string) => {
+    const containerDiv = document.createElement('div');
+    const valueBox = document.createElement('button');
+    valueBox.type = 'button';
+    valueBox.textContent = value;
+
+    const dropDiv = document.createElement('div');
+    dropDiv.className = 'drop';
+
+    const currentItems: Set<TItem> = new Set();
+
+    containerDiv.append(valueBox, dropDiv)
+
+    containerDiv.addEventListener('add-item', (e) => {
+        console.log(e);
+    });
+
+    containerDiv.addEventListener('remove-item', (e) => {
+        console.log(e);
+    });
+
+
+
+
+    const x: TTier = {
+        containerDiv,
+        dropDiv,
+        valueBox,
+        get items() {
+            return [];
+            //return _items;
+        },
+        sortOrder: 0
+    }
+    return x;
+
+};
+
+
+
+
 
 const Item = (): TItem => {
 
@@ -60,12 +78,12 @@ const Item = (): TItem => {
         const elementsFromPoint = document.elementsFromPoint(e.clientX, e.clientY);
         const parent = elementsFromPoint.find(el => el.classList.contains('drop')) as HTMLDivElement | undefined;
         if (!parent) return;
-        for (const tier of tiers) {
-            const drop = tier.querySelector('.drop');
-            if (!drop) continue;
-            drop.classList.remove('active');
-            if (drop === parent) drop.classList.add('active');
-        }
+        // for (const tier of tiers) {
+        //     const drop = tier.querySelector('.drop');
+        //     if (!drop) continue;
+        //     drop.classList.remove('active');
+        //     if (drop === parent) drop.classList.add('active');
+        // }
         if (!parent.children.length) return parent.append(placeholder);
         let closest = { el: parent.children[0], distanceX: Number.MAX_SAFE_INTEGER };
         // Children is immediately populated with placeholder, so might have to filter, or find smarter way
@@ -260,7 +278,7 @@ const TIERLIST = document.createElement('div');
 TIERLIST.className = 'sw-tier-list sw-theme';
 
 const defaultTiers = ['S', 'A', 'B', 'C', 'D', 'F'];
-const tiers = new Set(defaultTiers.map(t => buildTier(t)));
+const tiers = new Set(defaultTiers.map(t => Tier(t)));
 
 const main = document.createElement('main');
 
@@ -317,7 +335,7 @@ const footer = document.createElement('footer');
 footer.replaceChildren(unusedItemsRow, addItemButton);
 
 
-main.replaceChildren(...tiers);
+main.replaceChildren(...Array.from(tiers).map(t => t.containerDiv));
 TIERLIST.replaceChildren(header, main, footer);
 
 document.body.replaceChildren(TIERLIST);

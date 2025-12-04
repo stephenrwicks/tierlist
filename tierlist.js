@@ -1,22 +1,31 @@
 "use strict";
-const buildTier = (value) => {
-    const container = document.createElement('div');
+const ITEMSET = new Set();
+const Tier = (value) => {
+    const containerDiv = document.createElement('div');
     const valueBox = document.createElement('button');
     valueBox.type = 'button';
     valueBox.textContent = value;
     const dropDiv = document.createElement('div');
     dropDiv.className = 'drop';
-    container.append(valueBox, dropDiv);
+    const currentItems = new Set();
+    containerDiv.append(valueBox, dropDiv);
+    containerDiv.addEventListener('add-item', (e) => {
+        console.log(e);
+    });
+    containerDiv.addEventListener('remove-item', (e) => {
+        console.log(e);
+    });
     const x = {
-        container,
+        containerDiv,
         dropDiv,
         valueBox,
-        items: [],
+        get items() {
+            return [];
+        },
         sortOrder: 0
     };
-    return container;
+    return x;
 };
-const ITEMSET = new Set();
 const Item = () => {
     let _NAME = '';
     let _IMG = null;
@@ -32,14 +41,6 @@ const Item = () => {
         const parent = elementsFromPoint.find(el => el.classList.contains('drop'));
         if (!parent)
             return;
-        for (const tier of tiers) {
-            const drop = tier.querySelector('.drop');
-            if (!drop)
-                continue;
-            drop.classList.remove('active');
-            if (drop === parent)
-                drop.classList.add('active');
-        }
         if (!parent.children.length)
             return parent.append(placeholder);
         let closest = { el: parent.children[0], distanceX: Number.MAX_SAFE_INTEGER };
@@ -206,7 +207,7 @@ const Item = () => {
 const TIERLIST = document.createElement('div');
 TIERLIST.className = 'sw-tier-list sw-theme';
 const defaultTiers = ['S', 'A', 'B', 'C', 'D', 'F'];
-const tiers = new Set(defaultTiers.map(t => buildTier(t)));
+const tiers = new Set(defaultTiers.map(t => Tier(t)));
 const main = document.createElement('main');
 const unusedItemsRow = document.createElement('div');
 unusedItemsRow.className = 'drop';
@@ -250,7 +251,7 @@ const imagePrompt = () => {
 const header = document.createElement('header');
 const footer = document.createElement('footer');
 footer.replaceChildren(unusedItemsRow, addItemButton);
-main.replaceChildren(...tiers);
+main.replaceChildren(...Array.from(tiers).map(t => t.containerDiv));
 TIERLIST.replaceChildren(header, main, footer);
 document.body.replaceChildren(TIERLIST);
 const colorPicker = document.createElement('input');
