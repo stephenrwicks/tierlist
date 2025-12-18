@@ -1,34 +1,34 @@
 "use strict";
 const ITEMSET = new Set();
-const Tier = (value) => {
+const Tier = (name = '', items = []) => {
     const containerDiv = document.createElement('div');
-    const valueBox = document.createElement('button');
-    valueBox.type = 'button';
-    valueBox.textContent = value;
+    const nameDiv = document.createElement('button');
+    nameDiv.type = 'button';
+    nameDiv.textContent = name;
     const dropDiv = document.createElement('div');
     dropDiv.className = 'drop';
-    const currentItems = new Set();
-    containerDiv.append(valueBox, dropDiv);
+    const currentItems = new Set(items);
+    containerDiv.append(nameDiv, dropDiv);
     containerDiv.addEventListener('add-item', (e) => {
-        console.log(e);
+        const item = e.detail;
+        currentItems.add(item);
     });
     containerDiv.addEventListener('remove-item', (e) => {
-        console.log(e);
+        const item = e.detail;
+        currentItems.delete(item);
     });
-    const x = {
+    const _TIER = {
         containerDiv,
         dropDiv,
-        valueBox,
+        nameDiv,
         get items() {
-            return [];
+            return [...currentItems];
         },
         sortOrder: 0
     };
-    return x;
+    return _TIER;
 };
-const Item = () => {
-    let _NAME = '';
-    let _IMG = null;
+const Item = (_NAME = '', _IMG = null) => {
     const _CONTAINERBUTTON = document.createElement('button');
     _CONTAINERBUTTON.type = 'button';
     _CONTAINERBUTTON.className = 'item';
@@ -38,9 +38,12 @@ const Item = () => {
     let offsetY = 0;
     const dropPlaceholder = (e) => {
         const elementsFromPoint = document.elementsFromPoint(e.clientX, e.clientY);
-        const parent = elementsFromPoint.find(el => el.classList.contains('drop'));
-        if (!parent)
+        const parent = elementsFromPoint.find(el => el.classList.contains('drop') && TIERLIST.contains(el));
+        if (!parent) {
+            unusedItemsRow.append(placeholder);
             return;
+        }
+        ;
         if (!parent.children.length)
             return parent.append(placeholder);
         let closest = { el: parent.children[0], distanceX: Number.MAX_SAFE_INTEGER };
@@ -48,9 +51,11 @@ const Item = () => {
         for (const el of parent.children) {
             const rect = el.getBoundingClientRect();
             const width = rect.right - rect.left;
-            const center = width / 2 + rect.left;
-            const distanceX = Math.abs(center - e.clientX);
-            if (distanceX < closest.distanceX) {
+            const height = rect.top - rect.bottom;
+            const distanceX = Math.abs(width / 2 + rect.left - e.clientX);
+            const distanceY = Math.abs(height / 2 + rect.top - e.clientY);
+            const isClosestSibling = distanceX < closest.distanceX;
+            if (isClosestSibling) {
                 closest = { el, distanceX };
                 const distanceToRight = Math.abs(rect.right - e.clientX);
                 const distanceToLeft = Math.abs(rect.left - e.clientX);
@@ -68,15 +73,16 @@ const Item = () => {
         window.addEventListener('pointerup', handleUp, { once: true });
     };
     const handleMove = (e) => {
-        main.append(_CONTAINERBUTTON);
+        _CONTAINERBUTTON.dispatchEvent(new CustomEvent('remove-item', { bubbles: true, detail: _ITEM }));
         _CONTAINERBUTTON.style.position = 'absolute';
-        _CONTAINERBUTTON.style.left = `${e.clientX - offsetX}px`;
-        _CONTAINERBUTTON.style.top = `${e.clientY - offsetY}px`;
+        _CONTAINERBUTTON.style.left = `${e.clientX - offsetX + window.scrollX}px`;
+        _CONTAINERBUTTON.style.top = `${e.clientY - offsetY + window.scrollY}px`;
         _CONTAINERBUTTON.classList.add('drag');
         dropPlaceholder(e);
     };
     const handleUp = () => {
         placeholder.replaceWith(_CONTAINERBUTTON);
+        _CONTAINERBUTTON.dispatchEvent(new CustomEvent('add-item', { bubbles: true, detail: _ITEM }));
         _CONTAINERBUTTON.style.position = '';
         _CONTAINERBUTTON.style.left = '';
         _CONTAINERBUTTON.style.top = '';
@@ -133,12 +139,23 @@ const Item = () => {
         submitButton.type = 'submit';
         submitButton.textContent = 'OK';
         submitButton.disabled = !_ITEM.name || !_ITEM.img;
+        const deleteItemButton = document.createElement('button');
+        deleteItemButton.type = 'button';
+        deleteItemButton.textContent = 'Delete';
+        deleteItemButton.style.marginRight = 'auto';
+        deleteItemButton.addEventListener('click', () => {
+            _CONTAINERBUTTON.dispatchEvent(new CustomEvent('remove-item', { detail: _ITEM }));
+            _ITEM.delete();
+            dialog.remove();
+        });
         const content = document.createElement('div');
         content.className = 'form-content';
         content.replaceChildren(addImageButton, inputWrapper, clearImageButton);
         const buttonRow = document.createElement('div');
         buttonRow.className = 'button-row';
         buttonRow.replaceChildren(cancelButton, submitButton);
+        if (ITEMSET.has(_ITEM))
+            buttonRow.prepend(deleteItemButton);
         if (_editedImg) {
             inputWrapper.after(_editedImg);
             input.value = _NAME ?? '';
@@ -199,6 +216,7 @@ const Item = () => {
         },
         edit,
         delete() {
+            _CONTAINERBUTTON.remove();
             ITEMSET.delete(this);
         },
     };
@@ -210,7 +228,7 @@ const defaultTiers = ['S', 'A', 'B', 'C', 'D', 'F'];
 const tiers = new Set(defaultTiers.map(t => Tier(t)));
 const main = document.createElement('main');
 const unusedItemsRow = document.createElement('div');
-unusedItemsRow.className = 'drop';
+unusedItemsRow.className = 'unused-items';
 const addItemButton = document.createElement('button');
 addItemButton.type = 'button';
 addItemButton.className = 'solid';

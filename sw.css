@@ -1,8 +1,9 @@
 :where(.sw-theme) {
-    /* sw-theme v0.1 */
+    /* sw-theme v0.1 - I am writing a base stylesheet for fun side projects*/
 
     /* Color should be the only thing modified externally */
     /* May add accent color (color2) eventually */
+
     --color: rgba(50, 50, 50, 1);
 
     /* Need to decide which tokens are meant to be used externally. Maybe I don't create any tokens at all if they are not meant to be used */
@@ -21,10 +22,10 @@
     --boxShadowInset: 0px 0px 0px .03em var(--color500) inset;
 
     font: normal 16px Segoe UI,
-        Roboto,
-        Helvetica Neue,
-        Arial,
-        sans-serif;
+    Roboto,
+    Helvetica Neue,
+    Arial,
+    sans-serif;
     color: var(--black);
     accent-color: var(--color300);
     box-sizing: border-box;
@@ -77,11 +78,12 @@
             opacity: .7;
         }
 
-        &:hover:not(:disabled)  {
+        &:hover:not(:disabled, :focus, :focus-visible, :focus-within) {
             box-shadow: var(--boxShadow);
         }
 
         &:focus,
+        &:focus-within,
         &:focus-visible {
             box-shadow: var(--boxShadow), var(--boxShadowInset);
         }

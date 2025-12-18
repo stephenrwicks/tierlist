@@ -1,7 +1,12 @@
+type TierList = {
+    name: string;
+    tiers: TTier[];
+}
+
 type TTier = {
     containerDiv: HTMLDivElement;
     dropDiv: HTMLDivElement;
-    valueBox: HTMLButtonElement;
+    nameDiv: HTMLButtonElement;
     items: TItem[];
     sortOrder: number;
 }
@@ -16,68 +21,76 @@ type TItem = {
     delete(): void;
 }
 
+
+
 const ITEMSET: Set<TItem> = new Set();
 
 
-const Tier = (value: string) => {
+const Tier = (name: string = '', items: TItem[] = []) => {
     const containerDiv = document.createElement('div');
-    const valueBox = document.createElement('button');
-    valueBox.type = 'button';
-    valueBox.textContent = value;
+    const nameDiv = document.createElement('button');
+    nameDiv.type = 'button';
+    nameDiv.textContent = name;
 
     const dropDiv = document.createElement('div');
     dropDiv.className = 'drop';
 
-    const currentItems: Set<TItem> = new Set();
+    const currentItems: Set<TItem> = new Set(items);
 
-    containerDiv.append(valueBox, dropDiv)
+    containerDiv.append(nameDiv, dropDiv)
 
     containerDiv.addEventListener('add-item', (e) => {
-        console.log(e);
+        const item: TItem = (e as CustomEvent).detail;
+        currentItems.add(item);
     });
 
     containerDiv.addEventListener('remove-item', (e) => {
-        console.log(e);
+        const item: TItem = (e as CustomEvent).detail;
+        currentItems.delete(item);
     });
 
 
+    // Get items based on order on DOM
+    // Does a tier track its items, or does an item simply track its tier based on name
+    // Probably easier to use the nested structure for loading - Tier has a list of items
 
-
-    const x: TTier = {
+    const _TIER: TTier = {
         containerDiv,
         dropDiv,
-        valueBox,
+        nameDiv,
         get items() {
-            return [];
+            return [...currentItems]; // This works, just need to rearrange
+            // Maybe have a set and we retrieve an array based on sort order
             //return _items;
         },
         sortOrder: 0
     }
-    return x;
+    return _TIER;
 
 };
 
 
 
 
+// The img prop should actually be src because that is what we are loading here
+const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem => {
 
-const Item = (): TItem => {
-
-    let _NAME = '';
-    let _IMG: HTMLImageElement | null = null;
     const _CONTAINERBUTTON = document.createElement('button');
-
     _CONTAINERBUTTON.type = 'button';
     _CONTAINERBUTTON.className = 'item';
+
     const placeholder = document.createElement('div');
     placeholder.className = 'item';
+
     let offsetX = 0;
     let offsetY = 0;
-
     const dropPlaceholder = (e: PointerEvent) => {
         const elementsFromPoint = document.elementsFromPoint(e.clientX, e.clientY);
-        const parent = elementsFromPoint.find(el => el.classList.contains('drop')) as HTMLDivElement | undefined;
-        if (!parent) return;
+        const parent = elementsFromPoint.find(el => el.classList.contains('drop') && TIERLIST.contains(el)) as HTMLDivElement | undefined;
+        if (!parent) {
+            unusedItemsRow.append(placeholder);
+            return;
+        };
         // for (const tier of tiers) {
         //     const drop = tier.querySelector('.drop');
         //     if (!drop) continue;
@@ -92,17 +105,15 @@ const Item = (): TItem => {
         for (const el of parent.children) {
             const rect = el.getBoundingClientRect();
             const width = rect.right - rect.left;
-            const center = width / 2 + rect.left;
-            const distanceX = Math.abs(center - e.clientX);
-
+            const height = rect.top - rect.bottom;
+            const distanceX = Math.abs(width / 2 + rect.left - e.clientX);
+            const distanceY = Math.abs(height / 2 + rect.top - e.clientY);
+            const isClosestSibling = distanceX < closest.distanceX;
             // NEEDS distanceY to get correct row
-            if (distanceX < closest.distanceX) {
+            if (isClosestSibling) {
                 closest = { el, distanceX };
-                // Determine whether rect right or rect left is closer
                 const distanceToRight = Math.abs(rect.right - e.clientX);
                 const distanceToLeft = Math.abs(rect.left - e.clientX);
-                // Maybe can do this immediately because "center" might not be necessary
-                // Or you find closest distanceLeft and closest distanceRight and put it in between
                 method = distanceToRight > distanceToLeft ? 'before' : 'after';
             }
         }
@@ -117,15 +128,16 @@ const Item = (): TItem => {
         window.addEventListener('pointerup', handleUp, { once: true });
     };
     const handleMove = (e: PointerEvent) => {
-        main.append(_CONTAINERBUTTON);
+        _CONTAINERBUTTON.dispatchEvent(new CustomEvent('remove-item', { bubbles: true, detail: _ITEM }));
         _CONTAINERBUTTON.style.position = 'absolute';
-        _CONTAINERBUTTON.style.left = `${e.clientX - offsetX}px`;
-        _CONTAINERBUTTON.style.top = `${e.clientY - offsetY}px`;
+        _CONTAINERBUTTON.style.left = `${e.clientX - offsetX + window.scrollX}px`;
+        _CONTAINERBUTTON.style.top = `${e.clientY - offsetY + window.scrollY}px`;
         _CONTAINERBUTTON.classList.add('drag');
         dropPlaceholder(e);
     };
     const handleUp = () => {
         placeholder.replaceWith(_CONTAINERBUTTON);
+        _CONTAINERBUTTON.dispatchEvent(new CustomEvent('add-item', { bubbles: true, detail: _ITEM }));
         _CONTAINERBUTTON.style.position = '';
         _CONTAINERBUTTON.style.left = '';
         _CONTAINERBUTTON.style.top = '';
@@ -190,6 +202,16 @@ const Item = (): TItem => {
         submitButton.textContent = 'OK';
         submitButton.disabled = !_ITEM.name || !_ITEM.img;
 
+        const deleteItemButton = document.createElement('button');
+        deleteItemButton.type = 'button';
+        deleteItemButton.textContent = 'Delete';
+        deleteItemButton.style.marginRight = 'auto';
+        deleteItemButton.addEventListener('click', () => {
+            _CONTAINERBUTTON.dispatchEvent(new CustomEvent('remove-item', { detail: _ITEM }));
+            _ITEM.delete();
+            dialog.remove();
+        });
+
         const content = document.createElement('div');
         content.className = 'form-content';
         content.replaceChildren(addImageButton, inputWrapper, clearImageButton);
@@ -197,6 +219,7 @@ const Item = (): TItem => {
         const buttonRow = document.createElement('div');
         buttonRow.className = 'button-row';
         buttonRow.replaceChildren(cancelButton, submitButton);
+        if (ITEMSET.has(_ITEM)) buttonRow.prepend(deleteItemButton);
 
         if (_editedImg) {
             inputWrapper.after(_editedImg);
@@ -267,6 +290,7 @@ const Item = (): TItem => {
         },
         edit,
         delete() {
+            _CONTAINERBUTTON.remove();
             ITEMSET.delete(this);
         },
     };
@@ -283,8 +307,7 @@ const tiers = new Set(defaultTiers.map(t => Tier(t)));
 const main = document.createElement('main');
 
 const unusedItemsRow = document.createElement('div');
-unusedItemsRow.className = 'drop';
-
+unusedItemsRow.className = 'unused-items';
 
 const addItemButton = document.createElement('button');
 addItemButton.type = 'button';
