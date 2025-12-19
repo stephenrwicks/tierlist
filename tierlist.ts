@@ -1,12 +1,5 @@
-type TierList = {
-    name: string;
-    tiers: TTier[];
-}
-
 type TTier = {
     containerDiv: HTMLDivElement;
-    dropDiv: HTMLDivElement;
-    nameDiv: HTMLButtonElement;
     items: TItem[];
     sortOrder: number;
 }
@@ -21,13 +14,29 @@ type TItem = {
     delete(): void;
 }
 
+// Fix y position of item drag so row works
+// Drag gets weird when you have 3 items in the same tier already, placeholder drop is weird
+// It works perfectly when adding a new item to the tier. But when the item is already there, and placeholder is there, it gets messed up
+// Add tiers
+// Remove tiers
+// Drag tier? or move up/down with button
+// Confirm to delete all items in tier when deleting tier or send to unused items
+// Load, etc
+// Add image to tier value
+// Name tier
+// Name tierlist
 
+const TierList = {
+    name: '',
+    tiers: [] as TTier[],
+};
 
 const ITEMSET: Set<TItem> = new Set();
 
 
-const Tier = (name: string = '', items: TItem[] = []) => {
+const Tier = (name: string, sortOrder: number = 0, items: TItem[] = []) => {
     const containerDiv = document.createElement('div');
+
     const nameDiv = document.createElement('button');
     nameDiv.type = 'button';
     nameDiv.textContent = name;
@@ -37,17 +46,22 @@ const Tier = (name: string = '', items: TItem[] = []) => {
 
     const currentItems: Set<TItem> = new Set(items);
 
-    containerDiv.append(nameDiv, dropDiv)
+    containerDiv.replaceChildren(nameDiv, dropDiv)
 
-    containerDiv.addEventListener('add-item', (e) => {
-        const item: TItem = (e as CustomEvent).detail;
+    dropDiv.addEventListener('add-item', (e) => {
+        e.stopPropagation();
+        const item = (e as CustomEvent<TItem>).detail;
         currentItems.add(item);
     });
-
-    containerDiv.addEventListener('remove-item', (e) => {
-        const item: TItem = (e as CustomEvent).detail;
+    dropDiv.addEventListener('remove-item', (e) => {
+        e.stopPropagation();
+        const item = (e as CustomEvent<TItem>).detail;
         currentItems.delete(item);
     });
+
+    const edit = () => {
+        // Change color maybe. There's got to be a way to inject a different variable
+    };
 
 
     // Get items based on order on DOM
@@ -56,14 +70,19 @@ const Tier = (name: string = '', items: TItem[] = []) => {
 
     const _TIER: TTier = {
         containerDiv,
-        dropDiv,
-        nameDiv,
         get items() {
-            return [...currentItems]; // This works, just need to rearrange
-            // Maybe have a set and we retrieve an array based on sort order
-            //return _items;
+            const result = [];
+            const values = [...currentItems.values()];
+            for (const child of dropDiv.children) {
+                const item = values.find(x => x.containerButton === child);
+                if (!item) continue;
+                result.push(item);
+            }
+            return result;
         },
-        sortOrder: 0
+        get sortOrder() {
+            return TierList.tiers.indexOf(this); //Get based on DOM instead
+        },
     }
     return _TIER;
 
@@ -86,11 +105,14 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
     let offsetY = 0;
     const dropPlaceholder = (e: PointerEvent) => {
         const elementsFromPoint = document.elementsFromPoint(e.clientX, e.clientY);
-        const parent = elementsFromPoint.find(el => el.classList.contains('drop') && TIERLIST.contains(el)) as HTMLDivElement | undefined;
-        if (!parent) {
-            unusedItemsRow.append(placeholder);
-            return;
-        };
+        const parent = elementsFromPoint.find(el => el.classList.contains('drop')) as HTMLDivElement | undefined;
+        // for (const t of TierList.tiers) {
+        //     t.containerDiv.querySelector('.drop')!.style = '';
+        // }
+
+        if (!parent) return unusedItemsRow.append(placeholder);
+        // parent.style.background = 'var(--color100)';
+
         // for (const tier of tiers) {
         //     const drop = tier.querySelector('.drop');
         //     if (!drop) continue;
@@ -98,11 +120,14 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
         //     if (drop === parent) drop.classList.add('active');
         // }
         if (!parent.children.length) return parent.append(placeholder);
-        let closest = { el: parent.children[0], distanceX: Number.MAX_SAFE_INTEGER };
+        // This was children[0] but I made it initialize to null
+        let closest: {el: Element | null, distanceX: number} = { el: null, distanceX: Number.MAX_SAFE_INTEGER };
+        // Closest can be itself, maybe messing this up
         // Children is immediately populated with placeholder, so might have to filter, or find smarter way
         // Need to introduce y coordinates, or else second row doesn't work
         let method: 'before' | 'after' = 'before';
         for (const el of parent.children) {
+            if (el === _CONTAINERBUTTON || el === placeholder) continue;
             const rect = el.getBoundingClientRect();
             const width = rect.right - rect.left;
             const height = rect.top - rect.bottom;
@@ -112,12 +137,13 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
             // NEEDS distanceY to get correct row
             if (isClosestSibling) {
                 closest = { el, distanceX };
+                //console.log(closest.el === placeholder);
                 const distanceToRight = Math.abs(rect.right - e.clientX);
                 const distanceToLeft = Math.abs(rect.left - e.clientX);
                 method = distanceToRight > distanceToLeft ? 'before' : 'after';
             }
         }
-        closest.el[method](placeholder);
+        if (closest.el instanceof Element) closest.el[method](placeholder);
     };
     const handleDown = (e: PointerEvent) => {
         e.preventDefault();
@@ -128,6 +154,7 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
         window.addEventListener('pointerup', handleUp, { once: true });
     };
     const handleMove = (e: PointerEvent) => {
+        //_CONTAINERBUTTON.after(placeholder);
         _CONTAINERBUTTON.dispatchEvent(new CustomEvent('remove-item', { bubbles: true, detail: _ITEM }));
         _CONTAINERBUTTON.style.position = 'absolute';
         _CONTAINERBUTTON.style.left = `${e.clientX - offsetX + window.scrollX}px`;
@@ -219,6 +246,7 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
         const buttonRow = document.createElement('div');
         buttonRow.className = 'button-row';
         buttonRow.replaceChildren(cancelButton, submitButton);
+        // This is the only place itemset is used. Can be replaced with a simple boolean in here
         if (ITEMSET.has(_ITEM)) buttonRow.prepend(deleteItemButton);
 
         if (_editedImg) {
@@ -247,7 +275,7 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
         form.replaceChildren(content, buttonRow);
         dialog.replaceChildren(form);
 
-        TIERLIST.append(dialog);
+        tierListContainerDiv.append(dialog);
         dialog.showModal();
 
         return promise;
@@ -298,16 +326,24 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
     return _ITEM;
 };
 
-const TIERLIST = document.createElement('div');
-TIERLIST.className = 'sw-tier-list sw-theme';
+const tierListContainerDiv = document.createElement('div');
+tierListContainerDiv.className = 'sw-tier-list sw-theme';
 
-const defaultTiers = ['S', 'A', 'B', 'C', 'D', 'F'];
-const tiers = new Set(defaultTiers.map(t => Tier(t)));
+TierList.tiers.push(...['S', 'A', 'B', 'F'].map(t => Tier(t)));
 
 const main = document.createElement('main');
 
 const unusedItemsRow = document.createElement('div');
-unusedItemsRow.className = 'unused-items';
+unusedItemsRow.className = 'unused-items drop';
+
+const addTierButton = document.createElement('button');
+addTierButton.type = 'button';
+addTierButton.textContent = 'Add Tier';
+addTierButton.addEventListener('click', () => {
+    const name = prompt('Tier name');
+    const newTier = Tier(name ?? '');
+    main.append(newTier.containerDiv);
+});
 
 const addItemButton = document.createElement('button');
 addItemButton.type = 'button';
@@ -318,8 +354,6 @@ addItemButton.addEventListener('click', async () => {
     if (!item) return;
     item.add();
 });
-
-
 
 const getImageFromFile = (file: File) => {
     const reader = new FileReader();
@@ -350,6 +384,7 @@ const imagePrompt = (): Promise<HTMLImageElement | null> => {
     });
 };
 
+
 // const textPrompt = 
 
 const header = document.createElement('header');
@@ -358,16 +393,17 @@ const footer = document.createElement('footer');
 footer.replaceChildren(unusedItemsRow, addItemButton);
 
 
-main.replaceChildren(...Array.from(tiers).map(t => t.containerDiv));
-TIERLIST.replaceChildren(header, main, footer);
+main.replaceChildren(...Array.from(TierList.tiers).map(t => t.containerDiv));
+tierListContainerDiv.replaceChildren(header, main, footer);
 
-document.body.replaceChildren(TIERLIST);
+document.body.replaceChildren(tierListContainerDiv);
 
 // Can't assign computed style until this is on the dom
 const colorPicker = document.createElement('input');
 colorPicker.type = 'color';
-colorPicker.addEventListener('input', () => TIERLIST.style.setProperty('--color', colorPicker.value))
-colorPicker.value = getComputedStyle(TIERLIST).getPropertyValue('--color');
+colorPicker.addEventListener('input', () => tierListContainerDiv.style.setProperty('--color', colorPicker.value))
+colorPicker.value = getComputedStyle(tierListContainerDiv).getPropertyValue('--color');
+colorPicker.title = 'Theme';
 
 const saveButton = document.createElement('button');
 saveButton.type = 'button';
@@ -375,7 +411,19 @@ saveButton.textContent = '💾';
 saveButton.title = 'Save';
 saveButton.addEventListener('click', () => {
     console.log('a');
-    console.log(JSON.stringify([...ITEMSET]));
+    console.log(JSON.stringify(TierList));
+});
+saveButton.addEventListener('click', () => {
+    const a = document.createElement('a');
+    const json = JSON.stringify(TierList);
+    const fileName = `${TierList.name?.trim() ? TierList.name?.trim() : 'TierList'}.json`;
+    // This should get mapped to a new array because we don't need divs and stuff in the json
+    const file = new File([(new Blob([json]))], fileName, { type: 'application/json' });
+    const url = URL.createObjectURL(file);
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
 });
 const openButton = document.createElement('button');
 openButton.type = 'button';
@@ -385,4 +433,4 @@ openButton.addEventListener('click', () => {
 
 });
 
-header.append(openButton, saveButton, colorPicker);
+header.replaceChildren(addTierButton, openButton, saveButton, colorPicker);

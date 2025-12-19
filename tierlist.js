@@ -1,6 +1,10 @@
 "use strict";
+const TierList = {
+    name: '',
+    tiers: [],
+};
 const ITEMSET = new Set();
-const Tier = (name = '', items = []) => {
+const Tier = (name, sortOrder = 0, items = []) => {
     const containerDiv = document.createElement('div');
     const nameDiv = document.createElement('button');
     nameDiv.type = 'button';
@@ -8,23 +12,35 @@ const Tier = (name = '', items = []) => {
     const dropDiv = document.createElement('div');
     dropDiv.className = 'drop';
     const currentItems = new Set(items);
-    containerDiv.append(nameDiv, dropDiv);
-    containerDiv.addEventListener('add-item', (e) => {
+    containerDiv.replaceChildren(nameDiv, dropDiv);
+    dropDiv.addEventListener('add-item', (e) => {
+        e.stopPropagation();
         const item = e.detail;
         currentItems.add(item);
     });
-    containerDiv.addEventListener('remove-item', (e) => {
+    dropDiv.addEventListener('remove-item', (e) => {
+        e.stopPropagation();
         const item = e.detail;
         currentItems.delete(item);
     });
+    const edit = () => {
+    };
     const _TIER = {
         containerDiv,
-        dropDiv,
-        nameDiv,
         get items() {
-            return [...currentItems];
+            const result = [];
+            const values = [...currentItems.values()];
+            for (const child of dropDiv.children) {
+                const item = values.find(x => x.containerButton === child);
+                if (!item)
+                    continue;
+                result.push(item);
+            }
+            return result;
         },
-        sortOrder: 0
+        get sortOrder() {
+            return TierList.tiers.indexOf(this);
+        },
     };
     return _TIER;
 };
@@ -38,17 +54,16 @@ const Item = (_NAME = '', _IMG = null) => {
     let offsetY = 0;
     const dropPlaceholder = (e) => {
         const elementsFromPoint = document.elementsFromPoint(e.clientX, e.clientY);
-        const parent = elementsFromPoint.find(el => el.classList.contains('drop') && TIERLIST.contains(el));
-        if (!parent) {
-            unusedItemsRow.append(placeholder);
-            return;
-        }
-        ;
+        const parent = elementsFromPoint.find(el => el.classList.contains('drop'));
+        if (!parent)
+            return unusedItemsRow.append(placeholder);
         if (!parent.children.length)
             return parent.append(placeholder);
-        let closest = { el: parent.children[0], distanceX: Number.MAX_SAFE_INTEGER };
+        let closest = { el: null, distanceX: Number.MAX_SAFE_INTEGER };
         let method = 'before';
         for (const el of parent.children) {
+            if (el === _CONTAINERBUTTON || el === placeholder)
+                continue;
             const rect = el.getBoundingClientRect();
             const width = rect.right - rect.left;
             const height = rect.top - rect.bottom;
@@ -62,7 +77,8 @@ const Item = (_NAME = '', _IMG = null) => {
                 method = distanceToRight > distanceToLeft ? 'before' : 'after';
             }
         }
-        closest.el[method](placeholder);
+        if (closest.el instanceof Element)
+            closest.el[method](placeholder);
     };
     const handleDown = (e) => {
         e.preventDefault();
@@ -178,7 +194,7 @@ const Item = (_NAME = '', _IMG = null) => {
         });
         form.replaceChildren(content, buttonRow);
         dialog.replaceChildren(form);
-        TIERLIST.append(dialog);
+        tierListContainerDiv.append(dialog);
         dialog.showModal();
         return promise;
     };
@@ -222,13 +238,20 @@ const Item = (_NAME = '', _IMG = null) => {
     };
     return _ITEM;
 };
-const TIERLIST = document.createElement('div');
-TIERLIST.className = 'sw-tier-list sw-theme';
-const defaultTiers = ['S', 'A', 'B', 'C', 'D', 'F'];
-const tiers = new Set(defaultTiers.map(t => Tier(t)));
+const tierListContainerDiv = document.createElement('div');
+tierListContainerDiv.className = 'sw-tier-list sw-theme';
+TierList.tiers.push(...['S', 'A', 'B', 'F'].map(t => Tier(t)));
 const main = document.createElement('main');
 const unusedItemsRow = document.createElement('div');
-unusedItemsRow.className = 'unused-items';
+unusedItemsRow.className = 'unused-items drop';
+const addTierButton = document.createElement('button');
+addTierButton.type = 'button';
+addTierButton.textContent = 'Add Tier';
+addTierButton.addEventListener('click', () => {
+    const name = prompt('Tier name');
+    const newTier = Tier(name ?? '');
+    main.append(newTier.containerDiv);
+});
 const addItemButton = document.createElement('button');
 addItemButton.type = 'button';
 addItemButton.className = 'solid';
@@ -269,20 +292,32 @@ const imagePrompt = () => {
 const header = document.createElement('header');
 const footer = document.createElement('footer');
 footer.replaceChildren(unusedItemsRow, addItemButton);
-main.replaceChildren(...Array.from(tiers).map(t => t.containerDiv));
-TIERLIST.replaceChildren(header, main, footer);
-document.body.replaceChildren(TIERLIST);
+main.replaceChildren(...Array.from(TierList.tiers).map(t => t.containerDiv));
+tierListContainerDiv.replaceChildren(header, main, footer);
+document.body.replaceChildren(tierListContainerDiv);
 const colorPicker = document.createElement('input');
 colorPicker.type = 'color';
-colorPicker.addEventListener('input', () => TIERLIST.style.setProperty('--color', colorPicker.value));
-colorPicker.value = getComputedStyle(TIERLIST).getPropertyValue('--color');
+colorPicker.addEventListener('input', () => tierListContainerDiv.style.setProperty('--color', colorPicker.value));
+colorPicker.value = getComputedStyle(tierListContainerDiv).getPropertyValue('--color');
+colorPicker.title = 'Theme';
 const saveButton = document.createElement('button');
 saveButton.type = 'button';
 saveButton.textContent = '💾';
 saveButton.title = 'Save';
 saveButton.addEventListener('click', () => {
     console.log('a');
-    console.log(JSON.stringify([...ITEMSET]));
+    console.log(JSON.stringify(TierList));
+});
+saveButton.addEventListener('click', () => {
+    const a = document.createElement('a');
+    const json = JSON.stringify(TierList);
+    const fileName = `${TierList.name?.trim() ? TierList.name?.trim() : 'TierList'}.json`;
+    const file = new File([(new Blob([json]))], fileName, { type: 'application/json' });
+    const url = URL.createObjectURL(file);
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
 });
 const openButton = document.createElement('button');
 openButton.type = 'button';
@@ -290,4 +325,4 @@ openButton.textContent = '📁';
 openButton.title = 'Open';
 openButton.addEventListener('click', () => {
 });
-header.append(openButton, saveButton, colorPicker);
+header.replaceChildren(addTierButton, openButton, saveButton, colorPicker);
