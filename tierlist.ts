@@ -1,7 +1,9 @@
 type TTier = {
+    name: string,
     containerDiv: HTMLDivElement;
     items: TItem[];
     sortOrder: number;
+    edit(): Promise<string | null>;
 }
 
 type TItem = {
@@ -34,19 +36,24 @@ const TierList = {
 const ITEMSET: Set<TItem> = new Set();
 
 
-const Tier = (name: string, sortOrder: number = 0, items: TItem[] = []) => {
+const Tier = (name: string = '', items: TItem[] = []) => {
     const containerDiv = document.createElement('div');
 
-    const nameDiv = document.createElement('button');
-    nameDiv.type = 'button';
-    nameDiv.textContent = name;
+    const nameContainer = document.createElement('button');
+    nameContainer.type = 'button';
+    nameContainer.textContent = name;
+    nameContainer.addEventListener('click', async () => {
+        const n = await edit();
+        if (!n) return;
+        _TIER.name = n;
+    });
 
     const dropDiv = document.createElement('div');
     dropDiv.className = 'drop';
 
     const currentItems: Set<TItem> = new Set(items);
 
-    containerDiv.replaceChildren(nameDiv, dropDiv)
+    containerDiv.replaceChildren(nameContainer, dropDiv)
 
     dropDiv.addEventListener('add-item', (e) => {
         e.stopPropagation();
@@ -60,7 +67,69 @@ const Tier = (name: string, sortOrder: number = 0, items: TItem[] = []) => {
     });
 
     const edit = () => {
-        // Change color maybe. There's got to be a way to inject a different variable
+        const { promise, resolve } = Promise.withResolvers<string | null>();
+        const dialog = document.createElement('dialog');
+
+        const id = `_${crypto.randomUUID()}`;
+
+        const label = document.createElement('label');
+        label.htmlFor = id;
+        label.textContent = 'Tier Name';
+
+        const input = document.createElement('input');
+        input.id = id;
+        input.type = 'text';
+        input.maxLength = 30;
+        input.required = true;
+        input.pattern = '\\S.*'
+        input.value = name;
+
+        const inputWrapper = document.createElement('div');
+        inputWrapper.className = 'input-wrapper';
+        inputWrapper.replaceChildren(label, input);
+
+        const cancelButton = document.createElement('button');
+        cancelButton.type = 'button';
+        cancelButton.textContent = 'Cancel';
+        cancelButton.addEventListener('click', () => dialog.remove());
+
+        const submitButton = document.createElement('button');
+        submitButton.type = 'submit';
+        submitButton.textContent = 'OK';
+        //submitButton.disabled = !_ITEM.name || !_ITEM.img;
+
+        const buttonRow = document.createElement('div');
+        buttonRow.className = 'button-row';
+        buttonRow.replaceChildren(cancelButton, submitButton);
+
+        const content = document.createElement('div');
+        content.className = 'form-content form-content-tier';
+        content.replaceChildren(inputWrapper);
+
+        const form = document.createElement('form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            dialog.remove();
+            const newName = input.value?.trim();
+            if (!newName) {
+                resolve(null);
+                return;
+            }
+            _TIER.name = newName;
+            resolve(newName);
+        });
+
+        cancelButton.addEventListener('click', () => {
+            dialog.remove();
+            resolve(null);
+        });
+
+        form.replaceChildren(content, buttonRow);
+        dialog.replaceChildren(form);
+        tierListContainerDiv.append(dialog);
+        dialog.showModal();
+
+        return promise;
     };
 
 
@@ -69,9 +138,17 @@ const Tier = (name: string, sortOrder: number = 0, items: TItem[] = []) => {
     // Probably easier to use the nested structure for loading - Tier has a list of items
 
     const _TIER: TTier = {
+        get name() {
+            return name;
+        },
+        set name(n: string) {
+            name = n;
+            nameContainer.textContent = name;
+        },
         containerDiv,
+        edit,
         get items() {
-            const result = [];
+            const result: TItem[] = [];
             const values = [...currentItems.values()];
             for (const child of dropDiv.children) {
                 const item = values.find(x => x.containerButton === child);
@@ -121,21 +198,24 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
         // }
         if (!parent.children.length) return parent.append(placeholder);
         // This was children[0] but I made it initialize to null
-        let closest: {el: Element | null, distanceX: number} = { el: null, distanceX: Number.MAX_SAFE_INTEGER };
+        let closest: { el: Element | null, distanceX: number } = { el: null, distanceX: Number.MAX_SAFE_INTEGER };
+        let closestY = Number.MAX_SAFE_INTEGER;
         // Closest can be itself, maybe messing this up
         // Children is immediately populated with placeholder, so might have to filter, or find smarter way
         // Need to introduce y coordinates, or else second row doesn't work
         let method: 'before' | 'after' = 'before';
         for (const el of parent.children) {
+
             if (el === _CONTAINERBUTTON || el === placeholder) continue;
+            console.log(el);
             const rect = el.getBoundingClientRect();
             const width = rect.right - rect.left;
             const height = rect.top - rect.bottom;
             const distanceX = Math.abs(width / 2 + rect.left - e.clientX);
             const distanceY = Math.abs(height / 2 + rect.top - e.clientY);
-            const isClosestSibling = distanceX < closest.distanceX;
-            // NEEDS distanceY to get correct row
-            if (isClosestSibling) {
+            if (closestY < distanceY) continue; // You basically have to prioritize any on that row over any else
+            closestY = distanceY;
+            if (distanceX < closest.distanceX) {
                 closest = { el, distanceX };
                 //console.log(closest.el === placeholder);
                 const distanceToRight = Math.abs(rect.right - e.clientX);
@@ -176,7 +256,7 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
 
         const dialog = document.createElement('dialog');
         const form = document.createElement('form');
-        const id = `_${crypto.randomUUID()}`;
+
         let _editedImg: HTMLImageElement | null = _IMG ? _IMG.cloneNode() as HTMLImageElement : null;
 
         const addImageButton = document.createElement('button');
@@ -204,6 +284,7 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
             _editedImg = null;
         });
 
+        const id = `_${crypto.randomUUID()}`;
         const label = document.createElement('label');
         label.htmlFor = id;
         label.textContent = 'Name';
@@ -222,7 +303,10 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
         const cancelButton = document.createElement('button');
         cancelButton.type = 'button';
         cancelButton.textContent = 'Cancel';
-        cancelButton.addEventListener('click', () => dialog.remove());
+        cancelButton.addEventListener('click', () => {
+            dialog.remove();
+            resolve(null);
+        });
 
         const submitButton = document.createElement('button');
         submitButton.type = 'submit';
@@ -237,10 +321,16 @@ const Item = (_NAME: string = '', _IMG: HTMLImageElement | null = null): TItem =
             _CONTAINERBUTTON.dispatchEvent(new CustomEvent('remove-item', { detail: _ITEM }));
             _ITEM.delete();
             dialog.remove();
+            resolve(null);
+        });
+
+        dialog.addEventListener('cancel', () => {
+            dialog.remove();
+            resolve(null);
         });
 
         const content = document.createElement('div');
-        content.className = 'form-content';
+        content.className = 'form-content form-content-item';
         content.replaceChildren(addImageButton, inputWrapper, clearImageButton);
 
         const buttonRow = document.createElement('div');
@@ -339,9 +429,11 @@ unusedItemsRow.className = 'unused-items drop';
 const addTierButton = document.createElement('button');
 addTierButton.type = 'button';
 addTierButton.textContent = 'Add Tier';
-addTierButton.addEventListener('click', () => {
-    const name = prompt('Tier name');
-    const newTier = Tier(name ?? '');
+addTierButton.addEventListener('click', async () => {
+    const newTier = Tier();
+    const nameResult = await newTier.edit();
+    if (!nameResult) return; // Canceled
+    TierList.tiers.push(newTier);
     main.append(newTier.containerDiv);
 });
 
@@ -385,8 +477,6 @@ const imagePrompt = (): Promise<HTMLImageElement | null> => {
 };
 
 
-// const textPrompt = 
-
 const header = document.createElement('header');
 
 const footer = document.createElement('footer');
@@ -411,7 +501,18 @@ saveButton.textContent = '💾';
 saveButton.title = 'Save';
 saveButton.addEventListener('click', () => {
     console.log('a');
-    console.log(JSON.stringify(TierList));
+    const data = {
+        name: TierList.name,
+        tiers: TierList.tiers.map(t => {
+            return {
+                name: t.name,
+                items: t.items
+            }
+
+        })
+    };
+    // mapped out stuff that doesnt matter
+    console.log(JSON.stringify(data));
 });
 saveButton.addEventListener('click', () => {
     const a = document.createElement('a');

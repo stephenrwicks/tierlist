@@ -29,21 +29,20 @@ body {
             display: flex;
             flex-flow: row nowrap;
             gap: var(--gap);
-            height: var(--squareSize);
+            min-height: var(--squareSize);
             background-color: var(--white);
 
             >.drop {
                 /* Drop container */
                 flex-grow: 1;
                 display: flex;
-                flex-flow: row nowrap;
+                flex-flow: row wrap;
+                /* padding: 0px calc(var(--gap)/2); */
                 padding: 0px var(--gap);
                 gap: var(--gap);
-                border: var(--border);
+                outline: var(--border);
+                /* width: calc(calc(var(--gap)*6) + calc(var(--squareSize)*6)); */
 
-                &.active {
-                    box-shadow: var(--boxShadow);
-                }
             }
 
             >button {
@@ -59,7 +58,7 @@ body {
         flex-flow: row nowrap;
         justify-content: end;
         gap: .7em;
-        
+
         button {
             min-width: 2.5em;
         }
@@ -71,7 +70,7 @@ body {
         gap: .7em;
         min-height: var(--squareSize);
 
-        >.unused-items{
+        >.unused-items {
             /* Unused row */
             display: flex;
             flex-flow: row wrap;
@@ -129,6 +128,11 @@ body {
         width: 25em;
         height: 35em;
 
+        .input-wrapper {
+            display: grid;
+            gap: .3em;
+        }
+
         form {
             height: 100%;
             display: flex;
@@ -140,23 +144,29 @@ body {
             display: grid;
             place-items: center;
 
-            .input-wrapper, .clear-image-button {
-                display: none;
-            }
+            &.form-content-item {
 
-            &:has(img) {
-                .input-wrapper, .clear-image-button {
-                    display: block;
-                }
-
-                .add-image-button {
+                .input-wrapper,
+                .clear-image-button {
                     display: none;
                 }
 
-                img {
-                    height: 12em;
-                    width: auto;
-                    box-shadow: var(--boxShadow);
+                &:has(img) {
+
+                    .input-wrapper,
+                    .clear-image-button {
+                        display: block;
+                    }
+
+                    .add-image-button {
+                        display: none;
+                    }
+
+                    img {
+                        height: 12em;
+                        width: auto;
+                        box-shadow: var(--boxShadow);
+                    }
                 }
             }
         }
