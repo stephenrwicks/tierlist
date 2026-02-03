@@ -2,11 +2,8 @@
     /* sw-theme v0.1 - I am writing a base stylesheet for fun side projects*/
 
     /* Color should be the only thing modified externally */
-    /* May add accent color (color2) eventually */
 
     --color: rgba(50, 50, 50, 1);
-
-    /* Need to decide which tokens are meant to be used externally. Maybe I don't create any tokens at all if they are not meant to be used */
 
     --white: color-mix(in oklch, white 97%, var(--color) 3%);
     --color100: color-mix(in oklch, white 90%, var(--color) 10%);
@@ -45,20 +42,14 @@
 
     label:has(input[type="checkbox"]),
     label:has(input[type="radio"]) {
-        display: flex;
-        flex-flow: row nowrap;
+        display: grid;
+        grid-template-columns: min-content 1fr;
         gap: .5rem;
-        /* which easing to use? ease-out is snappier */
-        transition: background-color .2s ease-out;
+        transition: background-color .1s ease-out;
 
         &:hover {
             background-color: var(--color300);
         }
-    }
-
-    input[type="checkbox"],
-    input[type="radio"] {
-        all: initial;
     }
 
     button,
@@ -130,10 +121,10 @@
 
     dialog {
         margin: auto;
-        border: 0px;
         background-color: var(--white);
-        box-shadow: var(--boxShadow);
-        filter: drop-shadow(0px 0px 1em var(--black));
+        border: var(--border);
+        /* box-shadow: var(--boxShadow);
+        filter: drop-shadow(0px 0px 1em var(--black)); */
 
         &::backdrop {
             background-color: var(--color800);
