@@ -37,6 +37,7 @@ body {
             min-height: var(--squareSize);
             background-color: var(--white);
 
+
             >.drop {
                 /* Drop container */
                 flex-grow: 1;
@@ -46,7 +47,16 @@ body {
                 gap: var(--gap);
                 outline: var(--border);
                 outline-offset: -1px;
+
                 /* width: calc(calc(var(--gap)*6) + calc(var(--squareSize)*6)); */
+
+                &:has(.placeholder) {
+                    background-color: var(--color100);
+                }
+
+                /* .placeholder {
+                    transition: width .3s ease;
+                } */
 
             }
 
@@ -111,7 +121,6 @@ body {
         >div {
             background-color: var(--white);
             opacity: .7;
-            /* //align-self: center; */
             word-break: break-word;
             overflow: hidden;
             max-height: 100%;
@@ -151,6 +160,10 @@ body {
                     height: 12em;
                     width: auto;
                     box-shadow: var(--boxShadow);
+
+                    &[src=""] {
+                        display: none;
+                    }
                 }
 
             }
@@ -163,9 +176,6 @@ body {
             justify-content: end;
         }
 
-
     }
-
-
 
 }

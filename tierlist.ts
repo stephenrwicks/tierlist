@@ -47,6 +47,9 @@ const TIERLIST = (data?: TierListData) => {
             }
             return result;
         },
+        set tiers(tiers: TTier[]) {
+
+        },
         get element() {
             return WRAPPER;
         },
@@ -104,6 +107,7 @@ const TIERLIST = (data?: TierListData) => {
         };
         const handleMove = (e: PointerEvent) => {
             containerDiv.style.minWidth = lastWidth;
+            containerDiv.style.maxWidth = lastWidth;
             containerDiv.style.position = 'absolute';
             containerDiv.style.top = `${e.clientY - offsetY + window.scrollY}px`;
             containerDiv.classList.add('drag');
@@ -119,6 +123,7 @@ const TIERLIST = (data?: TierListData) => {
         };
 
         _TIERBUTTON.addEventListener('pointerdown', handleDown);
+
         const dropDiv = document.createElement('div');
         dropDiv.className = 'drop';
 
@@ -242,11 +247,15 @@ const TIERLIST = (data?: TierListData) => {
                 return result;
             }
         }
+
+        for (const initItem of currentItems) {
+            dropDiv.append(initItem.containerButton);
+        }
+
         return _TIER;
 
     };
 
-    // The img prop should actually be src because that is what we are loading here
     const Item = (_NAME = '', _SRC = ''): TItem => {
 
         const _ITEMBUTTON = document.createElement('button');
@@ -260,7 +269,7 @@ const TIERLIST = (data?: TierListData) => {
         _ITEMBUTTON.replaceChildren(_image, _textDiv);
 
         const placeholder = document.createElement('div');
-        placeholder.className = 'item';
+        placeholder.className = 'item placeholder';
 
         let offsetX = 0;
         let offsetY = 0;
@@ -268,16 +277,12 @@ const TIERLIST = (data?: TierListData) => {
             const elementsFromPoint = document.elementsFromPoint(e.clientX, e.clientY);
             const parent = elementsFromPoint.find(el => el.classList.contains('drop')) as HTMLDivElement | undefined;
             if (!parent) return unusedItemsRow.append(placeholder);
-            // parent.style.background = 'var(--color100)';
 
-            // for (const tier of tiers) {
-            //     const drop = tier.querySelector('.drop');
-            //     if (!drop) continue;
-            //     drop.classList.remove('active');
-            //     if (drop === parent) drop.classList.add('active');
-            // }
-            if (!parent.children.length) return parent.append(placeholder);
-            // This was children[0] but I made it initialize to null
+            if (!parent.children.length) {
+                parent.append(placeholder);
+                return;
+            }
+
             let closest: { el: Element | null, distanceX: number } = { el: null, distanceX: Number.MAX_SAFE_INTEGER };
             let closestY = Number.MAX_SAFE_INTEGER;
             // Closest can be itself, maybe messing this up
@@ -287,7 +292,7 @@ const TIERLIST = (data?: TierListData) => {
             for (const el of parent.children) {
 
                 if (el === _ITEMBUTTON || el === placeholder) continue;
-                // console.log(el);
+
                 const rect = el.getBoundingClientRect();
                 const width = rect.right - rect.left;
                 const height = rect.top - rect.bottom;
@@ -303,7 +308,7 @@ const TIERLIST = (data?: TierListData) => {
                     method = distanceToRight > distanceToLeft ? 'before' : 'after';
                 }
             }
-            if (closest.el instanceof Element) closest.el[method](placeholder);
+            closest.el instanceof Element ? closest.el[method](placeholder) : parent.append(placeholder);
         };
         const handleDown = (e: PointerEvent) => {
             e.preventDefault();
@@ -356,6 +361,7 @@ const TIERLIST = (data?: TierListData) => {
                 }
                 imageClone.src = newSource;
                 submitButton.disabled = false;
+                input.focus();
             });
 
             const clearImageButton = document.createElement('button');
@@ -458,7 +464,12 @@ const TIERLIST = (data?: TierListData) => {
                 e.preventDefault();
                 editItem();
             }
+            else if (e.key === 'Delete') {
+                e.preventDefault();
+                _ITEM.deleteThis();
+            }
         });
+        _ITEMBUTTON.addEventListener('click', () => _ITEMBUTTON.focus());
         _ITEMBUTTON.addEventListener('dblclick', editItem);
 
         const _ITEM: TItem = {
@@ -473,11 +484,6 @@ const TIERLIST = (data?: TierListData) => {
             get img() {
                 return _image;
             },
-            // set img(img: HTMLImageElement | null) {
-            //     _IMG = img;
-            //     _ITEMBUTTON.replaceChildren(_IMG ? _IMG : '', textDiv);
-
-            // },
             get src() {
                 return _image.src ?? '';
             },
@@ -501,7 +507,6 @@ const TIERLIST = (data?: TierListData) => {
 
         return _ITEM;
     };
-
 
 
     TIERS.push(...['S', 'A', 'B', 'F'].map(t => Tier(t)));
@@ -546,6 +551,18 @@ const TIERLIST = (data?: TierListData) => {
         });
     };
 
+    const getJsonFromFile = (file: File): Promise<string> => {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.addEventListener('load', (e) => {
+                const result = String(e.target?.result ?? '');
+                resolve(result);
+            }, { once: true });
+            reader.readAsText(file);
+        });
+        
+    };
+
     const imagePrompt = (): Promise<string | null> => {
         return new Promise(resolve => {
             const fileInput = document.createElement('input');
@@ -565,6 +582,27 @@ const TIERLIST = (data?: TierListData) => {
         });
     };
 
+    const jsonPrompt = (): Promise<string | null> => {
+        return new Promise(resolve => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'json';
+            fileInput.addEventListener('change', () => {
+                const files = fileInput.files;
+                if (!files?.length) {
+                    resolve(null);
+                }
+                else {
+                    const file = files[0];
+                    const str = getJsonFromFile(file);
+                    resolve(str)
+                }
+            }, { once: true });
+            fileInput.click();
+        });
+    };
+
+
 
     const header = document.createElement('header');
 
@@ -577,32 +615,32 @@ const TIERLIST = (data?: TierListData) => {
     // Can't assign computed style until this is on the dom
     const colorPicker = document.createElement('input');
     colorPicker.type = 'color';
-    colorPicker.addEventListener('input', () => WRAPPER.style.setProperty('--color', colorPicker.value))
+    colorPicker.addEventListener('input', () => WRAPPER.style.setProperty('--color', colorPicker.value));
     //colorPicker.value = getComputedStyle(tierListContainerDiv).getPropertyValue('--color');
-    colorPicker.value = 'rebeccapurple'
+    colorPicker.value = '#663399';
     colorPicker.title = 'Theme';
 
     const saveButton = document.createElement('button');
     saveButton.type = 'button';
     saveButton.textContent = '💾';
     saveButton.title = 'Save';
-    saveButton.addEventListener('click', () => {
-        const data = {
-            name: TierList.name, // get from input / textcontent
-            tiers: TIERS.map(t => {
-                return {
-                    name: t.name,
-                    items: t.items
-                }
 
-            })
-        };
-        // mapped out stuff that doesnt matter
-        console.log(JSON.stringify(data));
-    });
     saveButton.addEventListener('click', () => {
         const a = document.createElement('a');
-        const json = JSON.stringify(TierList);
+        const data: TierListData = TierList.tiers.map(tier => {
+            return {
+                name: tier.name,
+                items: tier.items.map(item => {
+                    return {
+                        name: item.name,
+                        src: item.src
+                    };
+                })
+            }
+        });
+
+        const json = JSON.stringify(data);
+        console.log(json);
         const fileName = `${TierList.name?.trim() ? TierList.name?.trim() : 'TierList'}.json`;
         // This should get mapped to a new array because we don't need divs and stuff in the json
         const file = new File([(new Blob([json]))], fileName, { type: 'application/json' });
@@ -612,21 +650,34 @@ const TIERLIST = (data?: TierListData) => {
         a.click();
         URL.revokeObjectURL(url);
     });
+
+    // const openFileInput = document.createElement('input');
+    // openFileInput.type = 'file';
+    // openFileInput.accept = '.json';
+
     const openButton = document.createElement('button');
     openButton.type = 'button';
     openButton.textContent = '📁';
     openButton.title = 'Open';
-    openButton.addEventListener('click', () => {
-        const data = {} as TierListData;
+    openButton.addEventListener('click', async () => {
+        //openFileInput.click();
+        const json = await jsonPrompt();
+        if (!json) return;
+        const data = JSON.parse(json) as TierListData;
         load(data);
     });
+
+
 
     const load = (data: TierListData) => {
         // validate data
         TIERS.length = 0;
         ITEMSET.clear();
         //const newTiers = data.map(x => Tier(x));
-        main.replaceChildren();
+        for (const tier of data) {
+            TIERS.push(Tier(tier.name, tier.items.map(x => Item(x.name, x.src))));
+        }
+        main.replaceChildren(...TIERS.map(t => t.containerDiv));
     };
 
     header.replaceChildren(addTierButton, openButton, saveButton, colorPicker);

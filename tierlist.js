@@ -12,6 +12,8 @@ const TIERLIST = (data) => {
             }
             return result;
         },
+        set tiers(tiers) {
+        },
         get element() {
             return WRAPPER;
         },
@@ -65,6 +67,7 @@ const TIERLIST = (data) => {
         };
         const handleMove = (e) => {
             containerDiv.style.minWidth = lastWidth;
+            containerDiv.style.maxWidth = lastWidth;
             containerDiv.style.position = 'absolute';
             containerDiv.style.top = `${e.clientY - offsetY + window.scrollY}px`;
             containerDiv.classList.add('drag');
@@ -180,6 +183,9 @@ const TIERLIST = (data) => {
                 return result;
             }
         };
+        for (const initItem of currentItems) {
+            dropDiv.append(initItem.containerButton);
+        }
         return _TIER;
     };
     const Item = (_NAME = '', _SRC = '') => {
@@ -190,7 +196,7 @@ const TIERLIST = (data) => {
         const _textDiv = document.createElement('div');
         _ITEMBUTTON.replaceChildren(_image, _textDiv);
         const placeholder = document.createElement('div');
-        placeholder.className = 'item';
+        placeholder.className = 'item placeholder';
         let offsetX = 0;
         let offsetY = 0;
         const dropPlaceholder = (e) => {
@@ -198,8 +204,10 @@ const TIERLIST = (data) => {
             const parent = elementsFromPoint.find(el => el.classList.contains('drop'));
             if (!parent)
                 return unusedItemsRow.append(placeholder);
-            if (!parent.children.length)
-                return parent.append(placeholder);
+            if (!parent.children.length) {
+                parent.append(placeholder);
+                return;
+            }
             let closest = { el: null, distanceX: Number.MAX_SAFE_INTEGER };
             let closestY = Number.MAX_SAFE_INTEGER;
             let method = 'before';
@@ -221,8 +229,7 @@ const TIERLIST = (data) => {
                     method = distanceToRight > distanceToLeft ? 'before' : 'after';
                 }
             }
-            if (closest.el instanceof Element)
-                closest.el[method](placeholder);
+            closest.el instanceof Element ? closest.el[method](placeholder) : parent.append(placeholder);
         };
         const handleDown = (e) => {
             e.preventDefault();
@@ -270,6 +277,7 @@ const TIERLIST = (data) => {
                 }
                 imageClone.src = newSource;
                 submitButton.disabled = false;
+                input.focus();
             });
             const clearImageButton = document.createElement('button');
             clearImageButton.type = 'button';
@@ -356,7 +364,12 @@ const TIERLIST = (data) => {
                 e.preventDefault();
                 editItem();
             }
+            else if (e.key === 'Delete') {
+                e.preventDefault();
+                _ITEM.deleteThis();
+            }
         });
+        _ITEMBUTTON.addEventListener('click', () => _ITEMBUTTON.focus());
         _ITEMBUTTON.addEventListener('dblclick', editItem);
         const _ITEM = {
             containerButton: _ITEMBUTTON,
@@ -428,6 +441,16 @@ const TIERLIST = (data) => {
             reader.readAsDataURL(file);
         });
     };
+    const getJsonFromFile = (file) => {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.addEventListener('load', (e) => {
+                const result = String(e.target?.result ?? '');
+                resolve(result);
+            }, { once: true });
+            reader.readAsText(file);
+        });
+    };
     const imagePrompt = () => {
         return new Promise(resolve => {
             const fileInput = document.createElement('input');
@@ -446,6 +469,25 @@ const TIERLIST = (data) => {
             fileInput.click();
         });
     };
+    const jsonPrompt = () => {
+        return new Promise(resolve => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'json';
+            fileInput.addEventListener('change', () => {
+                const files = fileInput.files;
+                if (!files?.length) {
+                    resolve(null);
+                }
+                else {
+                    const file = files[0];
+                    const str = getJsonFromFile(file);
+                    resolve(str);
+                }
+            }, { once: true });
+            fileInput.click();
+        });
+    };
     const header = document.createElement('header');
     const footer = document.createElement('footer');
     footer.replaceChildren(unusedItemsRow, addItemButton);
@@ -454,27 +496,27 @@ const TIERLIST = (data) => {
     const colorPicker = document.createElement('input');
     colorPicker.type = 'color';
     colorPicker.addEventListener('input', () => WRAPPER.style.setProperty('--color', colorPicker.value));
-    colorPicker.value = 'rebeccapurple';
+    colorPicker.value = '#663399';
     colorPicker.title = 'Theme';
     const saveButton = document.createElement('button');
     saveButton.type = 'button';
     saveButton.textContent = '💾';
     saveButton.title = 'Save';
     saveButton.addEventListener('click', () => {
-        const data = {
-            name: TierList.name,
-            tiers: TIERS.map(t => {
-                return {
-                    name: t.name,
-                    items: t.items
-                };
-            })
-        };
-        console.log(JSON.stringify(data));
-    });
-    saveButton.addEventListener('click', () => {
         const a = document.createElement('a');
-        const json = JSON.stringify(TierList);
+        const data = TierList.tiers.map(tier => {
+            return {
+                name: tier.name,
+                items: tier.items.map(item => {
+                    return {
+                        name: item.name,
+                        src: item.src
+                    };
+                })
+            };
+        });
+        const json = JSON.stringify(data);
+        console.log(json);
         const fileName = `${TierList.name?.trim() ? TierList.name?.trim() : 'TierList'}.json`;
         const file = new File([(new Blob([json]))], fileName, { type: 'application/json' });
         const url = URL.createObjectURL(file);
@@ -487,14 +529,20 @@ const TIERLIST = (data) => {
     openButton.type = 'button';
     openButton.textContent = '📁';
     openButton.title = 'Open';
-    openButton.addEventListener('click', () => {
-        const data = {};
+    openButton.addEventListener('click', async () => {
+        const json = await jsonPrompt();
+        if (!json)
+            return;
+        const data = JSON.parse(json);
         load(data);
     });
     const load = (data) => {
         TIERS.length = 0;
         ITEMSET.clear();
-        main.replaceChildren();
+        for (const tier of data) {
+            TIERS.push(Tier(tier.name, tier.items.map(x => Item(x.name, x.src))));
+        }
+        main.replaceChildren(...TIERS.map(t => t.containerDiv));
     };
     header.replaceChildren(addTierButton, openButton, saveButton, colorPicker);
     if (data) {
